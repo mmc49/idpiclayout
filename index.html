@@ -49,7 +49,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
 <div class="wrap">
 <header>
   <h1>ID Photo 4×6 Layout</h1>
-  <span class="badge">35×45 mm • 3×2 grid • Outer ticks</span>
+  <span class="badge">35×45 mm • 3×2 grid</span>
   <span class="pill">Works offline • No upload</span>
 </header>
 
@@ -100,6 +100,13 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
         <option value="3">3 px</option>
       </select></div>
 
+    <div class="field"><label>Tick color</label>
+      <select id="tickColor">
+        <option value="#000000" selected>Black</option>
+        <option value="#555555">Gray</option>
+        <option value="#ff0000">Red</option>
+      </select></div>
+
     <div class="field"><label>Tick position</label>
       <select id="tickPos">
         <option value="outside" selected>Outside photo (Canon style)</option>
@@ -123,7 +130,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
       <ul style="margin-top:6px;line-height:1.6;color:#cbd5e1;padding-left:18px">
         <li>Creates a true 4×6 inch sheet at chosen DPI (600/300)</li>
         <li>Places six copies of your photo (35×45 mm each)</li>
-        <li>Draws adjustable ticks (length, thickness, position)</li>
+        <li>Adjustable tick color, length, thickness, and position</li>
         <li>All local — no upload</li>
       </ul>
     </div>
@@ -143,6 +150,7 @@ fitModeSel=document.getElementById("fitMode"),
 tickLenSel=document.getElementById("tickLen"),
 tickThickSel=document.getElementById("tickThick"),
 tickPosSel=document.getElementById("tickPos"),
+tickColorSel=document.getElementById("tickColor"),
 renderBtn=document.getElementById("render"),
 downloadBtn=document.getElementById("downloadJpg"),
 printBtn=document.getElementById("printBtn"),
@@ -197,21 +205,20 @@ function placePhotos(img,layout,fit){
  }
 }
 
-function drawTicks(V, Hs, { len, t, dpi, pos }) {
-  ctx.fillStyle = "#000";
-  const offset = Math.round((dpi / 25.4) * 0.5);
-  const dir = pos === "outside" ? 1 : -1;
-
-  for (let i = 0; i < V.length; i++) {
-    const x = V[i];
-    ctx.fillRect(x - t / 2, Hs[0] - len * (dir === 1 ? 1 : 0) - offset * dir, t, len);
-    ctx.fillRect(x - t / 2, Hs[Hs.length - 1] + offset * dir, t, len);
-  }
-  for (let j = 0; j < Hs.length; j++) {
-    const y = Hs[j];
-    ctx.fillRect(V[0] - len * (dir === 1 ? 1 : 0) - offset * dir, y - t / 2, len, t);
-    ctx.fillRect(V[V.length - 1] + offset * dir, y - t / 2, len, t);
-  }
+function drawTicks(V,Hs,{len,t,dpi,pos,color}){
+ ctx.fillStyle=color;
+ const offset=Math.round((dpi/25.4)*0.5);
+ const dir=pos==="outside"?1:-1;
+ for(let i=0;i<V.length;i++){
+  const x=V[i];
+  ctx.fillRect(x-t/2,Hs[0]-len*(dir===1?1:0)-offset*dir,t,len);
+  ctx.fillRect(x-t/2,Hs[Hs.length-1]+offset*dir,t,len);
+ }
+ for(let j=0;j<Hs.length;j++){
+  const y=Hs[j];
+  ctx.fillRect(V[0]-len*(dir===1?1:0)-offset*dir,y-t/2,len,t);
+  ctx.fillRect(V[V.length-1]+offset*dir,y-t/2,len,t);
+ }
 }
 
 function render(){
@@ -222,7 +229,8 @@ function render(){
  const len=parseInt(tickLenSel.value,10);
  const t=parseInt(tickThickSel.value,10);
  const pos=tickPosSel.value;
- drawTicks(layout.V,layout.Hs,{len,t,dpi,pos});
+ const color=tickColorSel.value;
+ drawTicks(layout.V,layout.Hs,{len,t,dpi,pos,color});
 }
 
 function downloadJPEG(){
@@ -258,9 +266,15 @@ fileInput.addEventListener("change",e=>{
 function loadFile(f){
  if(!f.type.startsWith("image/")){alert("Choose an image.");return;}
  const url=URL.createObjectURL(f);const img=new Image();
- img.onload=()=>{loadedImg=img;URL.revokeObjectURL(url);render();};
- img.src=url;drop.textContent=f.name+" ✓ (click to change)";
+ img.onload=()=>{loadedImg=img;URL.revokeObjectURL(url);
+ drop.textContent=f.name+" ✓ (click to change)";
+ render();fileInput.value="";};
+ img.src=url;
 }
+
+// Live update whenever settings change
+[dpiSel,sizePreset,fitModeSel,tickLenSel,tickThickSel,tickPosSel,tickColorSel]
+.forEach(el=>el.addEventListener("change",()=>{if(loadedImg)render();}));
 
 renderBtn.onclick=render;
 downloadBtn.onclick=downloadJPEG;
