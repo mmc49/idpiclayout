@@ -118,6 +118,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
         <button id="render" class="primary">Render 4×6 Sheet</button>
         <button id="downloadJpg">Download JPEG</button>
         <button id="printBtn">Print</button>
+        <button id="resetBtn">Reset layout</button>
         <span class="note">Print settings: Paper 4×6 (10×15 cm), Scale 100%, Borderless OFF.</span>
       </div>
     </div>
@@ -154,6 +155,7 @@ tickColorSel=document.getElementById("tickColor"),
 renderBtn=document.getElementById("render"),
 downloadBtn=document.getElementById("downloadJpg"),
 printBtn=document.getElementById("printBtn"),
+resetBtn=document.getElementById("resetBtn"),
 canvas=document.getElementById("canvas"),
 ctx=canvas.getContext("2d");
 let loadedImg=null;
@@ -252,7 +254,23 @@ function openPrint(){
  w.document.open();w.document.write(html);w.document.close();
 }
 
-// Drag-drop
+// Reset layout to default
+function resetLayout(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+ loadedImg=null;
+ drop.textContent="Drop image here or click to choose";
+ fileInput.value="";
+ dpiSel.value="600";
+ sizePreset.value="35x45mm";
+ fitModeSel.value="cover";
+ tickLenSel.value="90";
+ tickThickSel.value="2";
+ tickColorSel.value="#000000";
+ tickPosSel.value="outside";
+}
+
+// Drag-drop handlers
 drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag")});
 drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
 drop.addEventListener("drop",e=>{
@@ -272,13 +290,14 @@ function loadFile(f){
  img.src=url;
 }
 
-// Live update whenever settings change
+// Live update on setting change
 [dpiSel,sizePreset,fitModeSel,tickLenSel,tickThickSel,tickPosSel,tickColorSel]
 .forEach(el=>el.addEventListener("change",()=>{if(loadedImg)render();}));
 
 renderBtn.onclick=render;
 downloadBtn.onclick=downloadJPEG;
 printBtn.onclick=openPrint;
+resetBtn.onclick=resetLayout;
 })();
 </script>
 </body>
