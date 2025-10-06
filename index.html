@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ID Photo 4×6 Layout • 35×45 mm • Outer Ticks</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#14161b; --muted:#9095a0; --text:#e9edf1; --acc:#6ee7b7; --acc2:#8ab4f8; --border:#252a33;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--text);}    
+    .wrap{max-width:1100px; margin:24px auto; padding:0 16px;}
+    header{display:flex; gap:16px; align-items:center; margin-bottom:16px}
+    header h1{font-size:20px; margin:0}
+    header .badge{background: #1f2937; color:#cbd5e1; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid var(--border)}
+    .panel{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px;}
+    .controls{display:grid; grid-template-columns:repeat(12,1fr); gap:12px; align-items:end}
+    .field{display:flex; flex-direction:column; gap:6px; grid-column: span 3}
+    .field.full{grid-column:1 / -1}
+    label{font-size:12px; color:var(--muted)}
+    input[type="file"], select, button, .btn{appearance:none; border:1px solid var(--border); background:#0f1116; color:var(--text); border-radius:10px; padding:10px 12px; font-size:14px}
+    button.primary{background:linear-gradient(135deg, var(--acc2), var(--acc)); color:#0b0c10; border:none; font-weight:600}
+    button:disabled{opacity:.5}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .drop{border:2px dashed #2b323d; border-radius:12px; padding:18px; text-align:center; color:#cbd5e1; cursor:pointer; background:#0f1116}
+    .drop.drag{border-color:var(--acc); background:#0e161f}
+    .preview{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px}
+    canvas{width:100%; height:auto; background:white; border-radius:12px; border:1px solid var(--border)}
+    .note{color:#aab1bc; font-size:12px}
+    footer{margin:24px 0; color:#9aa3af; font-size:12px}
+    .pill{padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:#cbd5e1; font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>ID Photo 4×6 Layout</h1>
+      <span class="badge">35×45 mm • 3×2 grid • Outer ticks</span>
+      <span class="pill">Works offline • No upload</span>
+    </header>
+
+    <section class="panel">
+      <div class="controls">
+        <div class="field" style="grid-column: span 6">
+          <label>Upload or drag & drop image</label>
+          <div id="drop" class="drop">Drop image here or click to choose<input id="file" type="file" accept="image/*" style="display:none"></div>
+          <div class="note">Tip: use an edited, properly cropped headshot (35×45 mm aspect ~0.777...). The app will place 6 copies.</div>
+        </div>
+
+        <div class="field">
+          <label>DPI (print resolution)</label>
+          <select id="dpi">
+            <option value="600" selected>600 dpi (best for SELPHY)</option>
+            <option value="300">300 dpi</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Photo size preset</label>
+          <select id="sizePreset">
+            <option value="35x45mm" selected>35×45 mm (Lebanon / Schengen)</option>
+            <option value="50x50mm">50×50 mm</option>
+            <option value="2x2in">2×2 in (US)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Fit mode</label>
+          <select id="fitMode">
+            <option value="cover" selected>Fill cell (cover) — may crop</option>
+            <option value="contain">Fit inside (contain) — may leave margins</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Tick length</label>
+          <select id="tickLen">
+            <option value="60">60 px (≈ 2.5 mm at 600 dpi)</option>
+            <option value="90" selected>90 px (≈ 3.8 mm)</option>
+            <option value="120">120 px (≈ 5.1 mm)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Tick thickness</label>
+          <select id="tickThick">
+            <option value="1">1 px</option>
+            <option value="2" selected>2 px</option>
+            <option value="3">3 px</option>
+          </select>
+        </div>
+
+        <div class="field full">
+          <div class="row">
+            <button id="render" class="primary">Render 4×6 Sheet</button>
+            <button id="downloadJpg">Download JPEG</button>
+            <button id="printBtn">Print</button>
+            <span class="note">Print with: Paper = 4×6 (10×15cm), Scale = 100% / Actual size, Borderless = OFF.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div>
+          <canvas id="canvas" width="3600" height="2400" aria-label="Layout preview"></canvas>
+        </div>
+        <div class="panel" style="background:#0f1116">
+          <h3 style="margin-top:0; font-size:14px; color:#cbd5e1">What this does</h3>
+          <ul style="margin-top:6px; line-height:1.6; color:#cbd5e1; padding-left:18px">
+            <li>Creates a true 4×6 inch sheet at your chosen DPI (600 or 300)</li>
+            <li>Places six copies of your photo sized to the preset (default: 35×45 mm)</li>
+            <li>Computes even margins & gutters automatically</li>
+            <li>Draws **outer corner ticks**: 6 top, 6 bottom, 4 left, 4 right</li>
+            <li>No uploads — everything runs in your browser</li>
+          </ul>
+          <p class="note">Need 12-up later? We can add a toggle; the math scales automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Made for precise ID-photo layout with Canon SELPHY CP1500. Keep Borderless OFF to preserve exact sizes & ticks.
+    </footer>
+  </div>
+
+<script>
+(function(){
+  // --- DOM elements ---
+  const fileInput = document.getElementById('file');
+  const drop = document.getElementById('drop');
+  const dpiSel = document.getElementById('dpi');
+  const sizePreset = document.getElementById('sizePreset');
+  const fitModeSel = document.getElementById('fitMode');
+  const tickLenSel = document.getElementById('tickLen');
+  const tickThickSel = document.getElementById('tickThick');
+  const renderBtn = document.getElementById('render');
+  const downloadBtn = document.getElementById('downloadJpg');
+  const printBtn = document.getElementById('printBtn');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let loadedImg = null; // Image object
+
+  // --- Helpers ---
+  const mmToIn = mm => mm / 25.4;
+  const inToPx = (inch, dpi) => Math.round(inch * dpi);
+
+  function getPhotoSizePx(preset, dpi){
+    switch(preset){
+      case '35x45mm':
+        return { w: inToPx(mmToIn(35), dpi), h: inToPx(mmToIn(45), dpi) };
+      case '50x50mm':
+        return { w: inToPx(mmToIn(50), dpi), h: inToPx(mmToIn(50), dpi) };
+      case '2x2in':
+        return { w: inToPx(2, dpi), h: inToPx(2, dpi) };
+      default:
+        return { w: inToPx(mmToIn(35), dpi), h: inToPx(mmToIn(45), dpi) };
+    }
+  }
+
+  function computeLayout(dpi){
+    // Sheet is fixed 6×4 inches landscape
+    const W = inToPx(6, dpi);  // 3600 @600, 1800 @300
+    const H = inToPx(4, dpi);  // 2400 @600, 1200 @300
+    canvas.width = W; canvas.height = H;
+
+    // 3×2 grid
+    const nCols = 3, nRows = 2;
+    const sz = getPhotoSizePx(sizePreset.value, dpi);
+
+    // Compute even margins/gutters
+    const usedW = nCols * sz.w; const usedH = nRows * sz.h;
+    const gapX = (W - usedW) / (nCols + 1); // 4 gaps horizontally
+    const gapY = (H - usedH) / (nRows + 1); // 3 gaps vertically
+
+    // Guides (outer + inner) like we used before
+    const V = [
+      Math.round(gapX),                        // left margin
+      Math.round(gapX + sz.w),                 // right of col1
+      Math.round(gapX*2 + sz.w),               // left of col2
+      Math.round(gapX*2 + sz.w*2),             // right of col2
+      Math.round(gapX*3 + sz.w*2),             // left of col3
+      Math.round(gapX*3 + sz.w*3)              // right margin
+    ];
+    const Hs = [
+      Math.round(gapY),                        // top margin
+      Math.round(gapY + sz.h),                 // bottom of row1
+      Math.round(gapY*2 + sz.h),               // top of row2
+      Math.round(gapY*2 + sz.h*2)              // bottom margin
+    ];
+
+    return { W, H, sz, V, Hs, gapX, gapY };
+  }
+
+  function drawTicks(V, Hs, cfg){
+    const len = cfg.len; // px
+    const t = cfg.t;     // thickness
+    const safe = cfg.safe; // inward offset from paper edge guides
+    ctx.fillStyle = '#000';
+
+    // 6 top ticks (at each vertical guide), drawn just below top margin Hs[0]
+    for(let i=0;i<V.length;i++){
+      const cx = V[i];
+      rect(cx - len/2, Hs[0] + safe, cx + len/2, Hs[0] + safe + t);
+    }
+    // 6 bottom ticks at Hs[3]
+    for(let i=0;i<V.length;i++){
+      const cx = V[i];
+      rect(cx - len/2, Hs[3] - safe - t, cx + len/2, Hs[3] - safe);
+    }
+    // 4 left ticks (at each horizontal guide) drawn right of V[0]
+    for(let j=0;j<Hs.length;j++){
+      const cy = Hs[j];
+      rect(V[0] + safe, cy - len/2, V[0] + safe + t, cy + len/2);
+    }
+    // 4 right ticks drawn left of V[5]
+    for(let j=0;j<Hs.length;j++){
+      const cy = Hs[j];
+      rect(V[5] - safe - t, cy - len/2, V[5] - safe, cy + len/2);
+    }
+
+    function rect(x1,y1,x2,y2){
+      ctx.fillRect(Math.round(x1), Math.round(y1), Math.round(x2-x1), Math.round(y2-y1));
+    }
+  }
+
+  function placePhotos(img, layout, fitMode){
+    const {W,H,sz, V, Hs, gapX, gapY} = layout;
+    // Background white
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,W,H);
+
+    // Compute top-left of first cell
+    const startX = V[0];
+    const startY = Hs[0];
+
+    // Draw 3×2
+    for(let r=0;r<2;r++){
+      for(let c=0;c<3;c++){
+        const x = Math.round(gapX*(c+1) + sz.w*c);
+        const y = Math.round(gapY*(r+1) + sz.h*r);
+        drawImageInCell(img, x, y, sz.w, sz.h, fitMode);
+      }
+    }
+  }
+
+  function drawImageInCell(img, x, y, w, h, fit){
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const ir = iw/ih;
+    const cr = w/h;
+    let dw=w, dh=h, dx=x, dy=y;
+    if(fit === 'contain'){
+      if(ir > cr){ // image wider
+        dw = w; dh = w/ir; dy = y + (h-dh)/2;
+      } else {
+        dh = h; dw = h*ir; dx = x + (w-dw)/2;
+      }
+    } else { // cover
+      if(ir > cr){ // image wider -> crop sides
+        dh = h; dw = h*ir; dx = x + (w-dw)/2;
+      } else {
+        dw = w; dh = w/ir; dy = y + (h-dh)/2;
+      }
+    }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  function render(){
+    if(!loadedImg){ alert('Please upload an image first.'); return; }
+    const dpi = parseInt(dpiSel.value,10);
+    const layout = computeLayout(dpi);
+    placePhotos(loadedImg, layout, fitModeSel.value);
+
+    // Ticks config — lengths are in pixels of final DPI
+    const tickLen = parseInt(tickLenSel.value,10);
+    const tickThick = parseInt(tickThickSel.value,10);
+    const safe = Math.round((dpi === 600 ? 12 : 6)); // small offset from edge guides
+    drawTicks(layout.V, layout.Hs, {len: tickLen, t: tickThick, safe});
+  }
+
+  function downloadJPEG(){
+    // High-quality JPEG export
+    const url = canvas.toDataURL('image/jpeg', 0.95);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'ID-4x6-layout.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  function openPrint(){
+    // Open a clean window with exact 6×4 inch print CSS
+    const w = window.open('', '_blank');
+    const dpi = parseInt(dpiSel.value,10);
+    const imgURL = canvas.toDataURL('image/png');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Print 4×6</title>
+      <style>
+        @page{ size: 6in 4in; margin: 0; }
+        html,body{height:100%;}
+        body{margin:0; display:flex; align-items:center; justify-content:center; background:#fff}
+        img{ width:6in; height:4in; image-rendering: -webkit-optimize-contrast; }
+      </style></head>
+      <body>
+        <img src="${imgURL}" alt="4×6 layout"/>
+        <script>window.onload=()=>{window.print();};</script>
+      </body></html>`;
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
+  // --- File handling ---
+  drop.addEventListener('click', ()=> fileInput.click());
+  drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', ()=> drop.classList.remove('drag'));
+  drop.addEventListener('drop', e=>{
+    e.preventDefault(); drop.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) loadFile(f);
+  });
+  fileInput.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if(f) loadFile(f);
+  });
+
+  function loadFile(f){
+    if(!f.type.startsWith('image/')){ alert('Please choose an image file.'); return; }
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = ()=>{ loadedImg = img; URL.revokeObjectURL(url); render(); };
+    img.src = url;
+    drop.textContent = f.name + ' ✓ (click to change)';
+  }
+
+  // Buttons
+  renderBtn.addEventListener('click', render);
+  downloadBtn.addEventListener('click', downloadJPEG);
+  printBtn.addEventListener('click', openPrint);
+
+  // Initial blank render (white canvas with ticks only for reference)
+  (function init(){
+    const dpi = parseInt(dpiSel.value,10);
+    const layout = computeLayout(dpi);
+    // white background
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,layout.W,layout.H);
+    // faint placeholder grid boxes
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+    for(let r=0;r<2;r++){
+      for(let c=0;c<3;c++){
+        const x = Math.round(layout.gapX*(c+1) + layout.sz.w*c);
+        const y = Math.round(layout.gapY*(r+1) + layout.sz.h*r);
+        ctx.strokeRect(x+0.5,y+0.5, layout.sz.w, layout.sz.h);
+      }
+    }
+    // ticks for reference
+    drawTicks(layout.V, layout.Hs, {len: 90, t: 2, safe: 12});
+  })();
+})();
+</script>
+</body>
+</html>
