@@ -13,10 +13,12 @@
 body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;
  background:var(--bg);color:var(--text)}
 .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-header{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+header{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 header h1{font-size:20px;margin:0}
 .badge{background:#1f2937;color:#cbd5e1;padding:4px 10px;
  border-radius:999px;font-size:12px;border:1px solid var(--border)}
+.version{background:#272a32;color:#a5b4fc;border:1px solid #383d47;
+ padding:4px 10px;border-radius:999px;font-size:12px}
 .panel{background:var(--panel);border:1px solid var(--border);
  border-radius:14px;padding:16px}
 .controls{display:grid;grid-template-columns:repeat(12,1fr);
@@ -52,6 +54,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
   <h1>ID Photo 4×6 Layout</h1>
   <span class="badge">35×45 mm • 3×2 grid</span>
   <span class="pill">Works offline • No upload</span>
+  <span class="version" id="versionTag"></span>
 </header>
 
 <section class="panel">
@@ -152,6 +155,17 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
 
 <script>
 (function(){
+// === Dynamic version badge ===
+const now = new Date();
+const month = now.toLocaleString("default", { month: "2-digit" });
+const day = String(now.getDate()).padStart(2,"0");
+const year = now.getFullYear();
+const VERSION_NUMBER = `v${year}.${month}.${day}`;
+const monthName = now.toLocaleString("default", { month: "short" });
+document.getElementById("versionTag").textContent =
+ `${VERSION_NUMBER} — Updated ${monthName} ${day}, ${year}`;
+
+// === Core app logic ===
 const fileInput=document.getElementById("file"),
 drop=document.getElementById("drop"),
 dpiSel=document.getElementById("dpi"),
@@ -268,13 +282,17 @@ function openPrint(){
  w.document.open();w.document.write(html);w.document.close();
 }
 
-// Reset layout
 function resetLayout(){
  ctx.clearRect(0,0,canvas.width,canvas.height);
  ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
  loadedImg=null;
+ const newInput=fileInput.cloneNode(true);
+ fileInput.parentNode.replaceChild(newInput,fileInput);
+ newInput.addEventListener("change",e=>{
+  const f=e.target.files?.[0];if(f)loadFile(f);
+ });
  drop.textContent="Drop image here or click to choose";
- fileInput.value="";
+ newInput.value="";
  dpiSel.value="600";
  sizePreset.value="35x45mm";
  fitModeSel.value="cover";
@@ -285,7 +303,6 @@ function resetLayout(){
  borderToggle.checked=false;
 }
 
-// Drag-drop
 drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag")});
 drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
 drop.addEventListener("drop",e=>{
@@ -305,7 +322,6 @@ function loadFile(f){
  img.src=url;
 }
 
-// Auto re-render when any setting changes
 [dpiSel,sizePreset,fitModeSel,tickLenSel,tickThickSel,tickPosSel,tickColorSel,borderToggle]
 .forEach(el=>el.addEventListener("change",()=>{if(loadedImg)render();}));
 
