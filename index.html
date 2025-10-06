@@ -62,8 +62,8 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
         <input id="file" type="file" accept="image/*">
       </label>
       <div class="note">
-        Tip: use an edited, properly cropped headshot (35×45 mm aspect ≈ 0.78).
-        The app will place 6 copies.
+        Tip: use a properly cropped headshot (35×45 mm aspect ≈ 0.78).  
+        The app will place 6 copies automatically.
       </div>
     </div>
 
@@ -100,6 +100,12 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
         <option value="3">3 px</option>
       </select></div>
 
+    <div class="field"><label>Tick position</label>
+      <select id="tickPos">
+        <option value="outside" selected>Outside photo (Canon style)</option>
+        <option value="inside">Inside photo edges</option>
+      </select></div>
+
     <div class="field full">
       <div class="row">
         <button id="render" class="primary">Render 4×6 Sheet</button>
@@ -117,14 +123,14 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
       <ul style="margin-top:6px;line-height:1.6;color:#cbd5e1;padding-left:18px">
         <li>Creates a true 4×6 inch sheet at chosen DPI (600/300)</li>
         <li>Places six copies of your photo (35×45 mm each)</li>
-        <li>Draws outer corner ticks 6 top + 6 bottom + 4 left + 4 right</li>
+        <li>Draws adjustable ticks (length, thickness, position)</li>
         <li>All local — no upload</li>
       </ul>
     </div>
   </div>
 </section>
 
-<footer>Made for Canon SELPHY CP1500. Keep Borderless OFF to preserve exact sizes & ticks.</footer>
+<footer>Made for Canon SELPHY CP1500. Keep Borderless OFF for exact sizes & marks.</footer>
 </div>
 
 <script>
@@ -136,6 +142,7 @@ sizePreset=document.getElementById("sizePreset"),
 fitModeSel=document.getElementById("fitMode"),
 tickLenSel=document.getElementById("tickLen"),
 tickThickSel=document.getElementById("tickThick"),
+tickPosSel=document.getElementById("tickPos"),
 renderBtn=document.getElementById("render"),
 downloadBtn=document.getElementById("downloadJpg"),
 printBtn=document.getElementById("printBtn"),
@@ -166,20 +173,6 @@ function computeLayout(dpi){
  return{W,H,sz,V,Hs,gapX,gapY};
 }
 
-function rect(x1,y1,x2,y2){ctx.fillRect(Math.round(x1),Math.round(y1),Math.round(x2-x1),Math.round(y2-y1));}
-
-function drawTicks(V,Hs,{len,t,safe}){
- ctx.fillStyle="#000";
- for(let i=0;i<V.length;i++){let cx=V[i];
-  rect(cx-len/2,Hs[0]+safe,cx+len/2,Hs[0]+safe+t);
-  rect(cx-len/2,Hs[3]-safe-t,cx+len/2,Hs[3]-safe);
- }
- for(let j=0;j<Hs.length;j++){let cy=Hs[j];
-  rect(V[0]+safe,cy-len/2,V[0]+safe+t,cy+len/2);
-  rect(V[5]-safe-t,cy-len/2,V[5]-safe,cy+len/2);
- }
-}
-
 function drawImageInCell(img,x,y,w,h,fit){
  const iw=img.naturalWidth,ih=img.naturalHeight,ir=iw/ih,cr=w/h;
  let dw=w,dh=h,dx=x,dy=y;
@@ -204,15 +197,32 @@ function placePhotos(img,layout,fit){
  }
 }
 
+function drawTicks(V, Hs, { len, t, dpi, pos }) {
+  ctx.fillStyle = "#000";
+  const offset = Math.round((dpi / 25.4) * 0.5);
+  const dir = pos === "outside" ? 1 : -1;
+
+  for (let i = 0; i < V.length; i++) {
+    const x = V[i];
+    ctx.fillRect(x - t / 2, Hs[0] - len * (dir === 1 ? 1 : 0) - offset * dir, t, len);
+    ctx.fillRect(x - t / 2, Hs[Hs.length - 1] + offset * dir, t, len);
+  }
+  for (let j = 0; j < Hs.length; j++) {
+    const y = Hs[j];
+    ctx.fillRect(V[0] - len * (dir === 1 ? 1 : 0) - offset * dir, y - t / 2, len, t);
+    ctx.fillRect(V[V.length - 1] + offset * dir, y - t / 2, len, t);
+  }
+}
+
 function render(){
  if(!loadedImg){alert("Please upload an image first.");return;}
  const dpi=parseInt(dpiSel.value,10);
  const layout=computeLayout(dpi);
  placePhotos(loadedImg,layout,fitModeSel.value);
- const len=parseInt(tickLenSel.value,10),
-       t=parseInt(tickThickSel.value,10),
-       safe=Math.round(dpi===600?12:6);
- drawTicks(layout.V,layout.Hs,{len,t,safe});
+ const len=parseInt(tickLenSel.value,10);
+ const t=parseInt(tickThickSel.value,10);
+ const pos=tickPosSel.value;
+ drawTicks(layout.V,layout.Hs,{len,t,dpi,pos});
 }
 
 function downloadJPEG(){
@@ -234,7 +244,7 @@ function openPrint(){
  w.document.open();w.document.write(html);w.document.close();
 }
 
-// drag-drop
+// Drag-drop
 drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag")});
 drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
 drop.addEventListener("drop",e=>{
