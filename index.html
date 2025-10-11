@@ -99,8 +99,8 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
 
     <div class="field"><label>Tick thickness</label>
       <select id="tickThick">
-        <option value="1">1 px</option>
-        <option value="2" selected>2 px</option>
+        <option value="1" selected>1 px</option>
+        <option value="2">2 px</option>
         <option value="3">3 px</option>
       </select></div>
 
@@ -142,7 +142,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
       <ul style="margin-top:6px;line-height:1.6;color:#cbd5e1;padding-left:18px">
         <li>Creates a true 4×6 inch sheet at chosen DPI (600/300)</li>
         <li>Places six copies of your photo (35×45 mm each)</li>
-        <li>Adjustable tick color, length, thickness, and position</li>
+        <li>Now includes dashed cut lines (6 on 3) between photos and edges</li>
         <li>Optional white frame borders for trimming clarity</li>
         <li>All local — no upload</li>
       </ul>
@@ -156,16 +156,16 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
 <script>
 (function(){
 // === Dynamic version badge ===
-const now = new Date();
-const month = now.toLocaleString("default", { month: "2-digit" });
-const day = String(now.getDate()).padStart(2,"0");
-const year = now.getFullYear();
-const VERSION_NUMBER = `v${year}.${month}.${day}`;
-const monthName = now.toLocaleString("default", { month: "short" });
-document.getElementById("versionTag").textContent =
+const now=new Date();
+const month=now.toLocaleString("default",{month:"2-digit"});
+const day=String(now.getDate()).padStart(2,"0");
+const year=now.getFullYear();
+const VERSION_NUMBER=`v${year}.${month}.${day}`;
+const monthName=now.toLocaleString("default",{month:"short"});
+document.getElementById("versionTag").textContent=
  `${VERSION_NUMBER} — Updated ${monthName} ${day}, ${year}`;
 
-// === Core app logic ===
+// === Core logic ===
 const fileInput=document.getElementById("file"),
 drop=document.getElementById("drop"),
 dpiSel=document.getElementById("dpi"),
@@ -199,11 +199,9 @@ function computeLayout(dpi){
  const nCols=3,nRows=2,sz=getPhotoSizePx(sizePreset.value,dpi);
  const usedW=nCols*sz.w,usedH=nRows*sz.h;
  const gapX=(W-usedW)/(nCols+1),gapY=(H-usedH)/(nRows+1);
- const V=[Math.round(gapX),Math.round(gapX+sz.w),
-          Math.round(gapX*2+sz.w),Math.round(gapX*2+sz.w*2),
-          Math.round(gapX*3+sz.w*2),Math.round(gapX*3+sz.w*3)];
- const Hs=[Math.round(gapY),Math.round(gapY+sz.h),
-           Math.round(gapY*2+sz.h),Math.round(gapY*2+sz.h*2)];
+ const V=[],Hs=[];
+ for(let c=0;c<=nCols;c++)V.push(Math.round(gapX*(c+1)+sz.w*c));
+ for(let r=0;r<=nRows;r++)Hs.push(Math.round(gapY*(r+1)+sz.h*r));
  return{W,H,sz,V,Hs,gapX,gapY};
 }
 
@@ -235,20 +233,30 @@ function placePhotos(img,layout,fit,border){
  }
 }
 
-function drawTicks(V,Hs,{len,t,dpi,pos,color}){
- ctx.fillStyle=color;
- const offset=Math.round((dpi/25.4)*0.5);
- const dir=pos==="outside"?1:-1;
+// === Dashed cut lines ===
+function drawDashedCuts(layout,{color,t}){
+ const {V,Hs,W,H}=layout;
+ ctx.save();
+ ctx.strokeStyle=color;
+ ctx.lineWidth=t;
+ ctx.setLineDash([6,3]); // dashed pattern
+ ctx.beginPath();
+
+ // vertical lines
  for(let i=0;i<V.length;i++){
-  const x=V[i];
-  ctx.fillRect(x-t/2,Hs[0]-len*(dir===1?1:0)-offset*dir,t,len);
-  ctx.fillRect(x-t/2,Hs[Hs.length-1]+offset*dir,t,len);
+   const x=V[i];
+   ctx.moveTo(x, Hs[0]-50);
+   ctx.lineTo(x, Hs[Hs.length-1]+50);
  }
+ // horizontal lines
  for(let j=0;j<Hs.length;j++){
-  const y=Hs[j];
-  ctx.fillRect(V[0]-len*(dir===1?1:0)-offset*dir,y-t/2,len,t);
-  ctx.fillRect(V[V.length-1]+offset*dir,y-t/2,len,t);
+   const y=Hs[j];
+   ctx.moveTo(V[0]-50, y);
+   ctx.lineTo(V[V.length-1]+50, y);
  }
+
+ ctx.stroke();
+ ctx.restore();
 }
 
 function render(){
@@ -256,11 +264,9 @@ function render(){
  const dpi=parseInt(dpiSel.value,10);
  const layout=computeLayout(dpi);
  placePhotos(loadedImg,layout,fitModeSel.value,borderToggle.checked);
- const len=parseInt(tickLenSel.value,10);
  const t=parseInt(tickThickSel.value,10);
- const pos=tickPosSel.value;
  const color=tickColorSel.value;
- drawTicks(layout.V,layout.Hs,{len,t,dpi,pos,color});
+ drawDashedCuts(layout,{color,t});
 }
 
 function downloadJPEG(){
@@ -297,7 +303,7 @@ function resetLayout(){
  sizePreset.value="35x45mm";
  fitModeSel.value="cover";
  tickLenSel.value="90";
- tickThickSel.value="2";
+ tickThickSel.value="1";
  tickColorSel.value="#000000";
  tickPosSel.value="outside";
  borderToggle.checked=false;
@@ -315,14 +321,15 @@ fileInput.addEventListener("change",e=>{
 
 function loadFile(f){
  if(!f.type.startsWith("image/")){alert("Choose an image.");return;}
- const url=URL.createObjectURL(f);const img=new Image();
+ const url=URL.createObjectURL(f);
+ const img=new Image();
  img.onload=()=>{loadedImg=img;URL.revokeObjectURL(url);
  drop.textContent=f.name+" ✓ (click to change)";
  render();fileInput.value="";};
  img.src=url;
 }
 
-[dpiSel,sizePreset,fitModeSel,tickLenSel,tickThickSel,tickPosSel,tickColorSel,borderToggle]
+[dpiSel,sizePreset,fitModeSel,tickThickSel,tickColorSel,borderToggle]
 .forEach(el=>el.addEventListener("change",()=>{if(loadedImg)render();}));
 
 renderBtn.onclick=render;
