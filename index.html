@@ -122,8 +122,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px}
       <ul style="margin-top:6px;line-height:1.6;color:#cbd5e1;padding-left:18px">
         <li>True 4×6 inch sheet at <b>600 dpi</b></li>
         <li>Six copies of your photo (35×45 mm each)</li>
-        <li><b>Light gray dashed cut lines (6 on 3)</b></li>
-        <li><b>Automatic red calibration box 35×45 mm</b></li>
+        <li><b>Light gray dashed cut lines</b></li>
         <li>All local — no upload</li>
       </ul>
     </div>
@@ -209,7 +208,7 @@ function placePhotos(img,l,fit,border){
 function drawDashedCuts(l,{t}){
  const {V,Hs}=l;
  ctx.save();
- ctx.strokeStyle="#888";
+ ctx.strokeStyle="#aaa"; // softer gray
  ctx.lineWidth=t;
  ctx.setLineDash([6,3]);
  ctx.beginPath();
@@ -219,29 +218,12 @@ function drawDashedCuts(l,{t}){
  ctx.restore();
 }
 
-// ---- Automatic calibration rectangle (always on) ----
-function drawCalibrationBox(){
- const boxW=inToPx(mmToIn(35),DPI);
- const boxH=inToPx(mmToIn(45),DPI);
- const margin=150;
- ctx.save();
- ctx.strokeStyle="red";
- ctx.lineWidth=4;
- ctx.setLineDash([]);
- ctx.strokeRect(margin,canvas.height-boxH-margin,boxW,boxH);
- ctx.font="32px Arial";
- ctx.fillStyle="red";
- ctx.fillText("35×45 mm check", margin, canvas.height-boxH-margin-20);
- ctx.restore();
-}
-
 function render(){
  if(!loadedImg){alert("Please upload an image first.");return;}
  const l=computeLayout();
  placePhotos(loadedImg,l,fitModeSel.value,borderToggle.checked);
  const t=parseInt(tickThickSel.value,10);
  drawDashedCuts(l,{t});
- drawCalibrationBox(); // always drawn
 }
 
 function downloadJPEG(){
