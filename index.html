@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ID Photo 4×6 Layout • 35×45 mm (Bordered-Calibrated)</title>
+<title>ID Photo 4×6 Layout • 35×45 mm (Bordered-Calibrated + Frame Toggle)</title>
 <style>
 :root{
  --bg:#0b0c10;--panel:#14161b;--muted:#9095a0;--text:#e9edf1;
@@ -17,12 +17,6 @@ header h1{font-size:20px;margin:0}
 .badge{background:#1f2937;color:#cbd5e1;padding:4px 10px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
 .version{background:#272a32;color:#a5b4fc;border:1px solid #383d47;padding:4px 10px;border-radius:999px;font-size:12px}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
-.controls{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:end}
-.field{display:flex;flex-direction:column;gap:6px;grid-column:span 6}
-label{font-size:12px;color:var(--muted)}
-button{appearance:none;border:1px solid var(--border);background:#0f1116;color:#e9edf1;
- border-radius:10px;padding:10px 12px;font-size:14px}
-button.primary{background:linear-gradient(135deg,var(--acc2),var(--acc));color:#0b0c10;border:none;font-weight:600}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .drop{border:2px dashed #2b323d;border-radius:12px;padding:18px;text-align:center;color:#cbd5e1;
  cursor:pointer;background:#0f1116;transition:border-color .2s}
@@ -32,26 +26,33 @@ canvas{width:100%;height:auto;background:white;border-radius:12px;border:1px sol
 .note{color:#aab1bc;font-size:12px}
 footer{margin:24px 0;color:#9aa3af;font-size:12px;text-align:center}
 #file{display:none}
+label{font-size:12px;color:var(--muted)}
+input[type="checkbox"]{width:auto;transform:scale(1.3);margin-right:8px;vertical-align:middle}
+button{appearance:none;border:1px solid var(--border);background:#0f1116;color:#e9edf1;
+ border-radius:10px;padding:10px 12px;font-size:14px}
+button.primary{background:linear-gradient(135deg,var(--acc2),var(--acc));color:#0b0c10;border:none;font-weight:600}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <h1>ID Photo 4×6 Layout</h1>
-  <span class="badge">35×45 mm • 3×2 grid • Bordered calibrated (+3%)</span>
+  <span class="badge">35×45 mm • 3×2 grid • Bordered (+3 %)</span>
   <span class="version" id="versionTag"></span>
 </header>
 
 <section class="panel">
-  <div class="controls">
-    <div class="field">
-      <label>Upload or drag & drop image</label>
-      <label id="drop" class="drop">
-        Drop image here or click to choose
-        <input id="file" type="file" accept="image/*">
-      </label>
-      <div class="note">600 DPI • Bordered printing (Scale 100 %) → true 35×45 mm final size</div>
-    </div>
+  <div>
+    <label id="drop" class="drop">
+      Drop image here or click to choose
+      <input id="file" type="file" accept="image/*">
+    </label>
+    <div class="note">600 DPI • Bordered printing (Scale 100 %) → true 35×45 mm size</div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+    <input type="checkbox" id="showFrame">
+    <label for="showFrame">Show white frame around each photo</label>
   </div>
 
   <div class="row" style="margin-top:12px">
@@ -82,14 +83,13 @@ ctx=canvas.getContext("2d"),
 renderBtn=document.getElementById("render"),
 downloadBtn=document.getElementById("downloadJpg"),
 printBtn=document.getElementById("printBtn"),
-resetBtn=document.getElementById("resetBtn");
+resetBtn=document.getElementById("resetBtn"),
+frameToggle=document.getElementById("showFrame");
 
 const DPI=600;
 const mmToIn=mm=>mm/25.4,inToPx=mm=>Math.round(mmToIn(mm)*DPI);
 let loadedImg=null;
-
-// enlarge 3% to offset Selphy's bordered shrink
-const SCALE_FACTOR=1.03;
+const SCALE_FACTOR=1.03; // 3 % enlargement for bordered printing
 
 function computeLayout(){
  const W=inToPx(152.4),H=inToPx(101.6); // 4×6 in
@@ -98,11 +98,9 @@ function computeLayout(){
  const totalW=cols*pw,totalH=rows*ph;
  const gapX=(W-totalW)/(cols+1),gapY=(H-totalH)/(rows+1);
  const positions=[];
- for(let r=0;r<rows;r++){
-  for(let c=0;c<cols;c++){
+ for(let r=0;r<rows;r++)
+  for(let c=0;c<cols;c++)
    positions.push({x:gapX*(c+1)+pw*c,y:gapY*(r+1)+ph*r});
-  }
- }
  return{W,H,pw,ph,positions,gapX,gapY};
 }
 
@@ -132,7 +130,16 @@ function render(){
  if(!loadedImg){alert("Please upload an image first.");return;}
  const layout=computeLayout();
  ctx.fillStyle="#fff";ctx.fillRect(0,0,layout.W,layout.H);
- for(const p of layout.positions)drawImage(loadedImg,p.x,p.y,layout.pw,layout.ph);
+ for(const p of layout.positions){
+  drawImage(loadedImg,p.x,p.y,layout.pw,layout.ph);
+  if(frameToggle.checked){
+    ctx.save();
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=1.5;
+    ctx.strokeRect(p.x+0.5,p.y+0.5,layout.pw-1,layout.ph-1);
+    ctx.restore();
+  }
+ }
  drawDashedCuts(layout);
 }
 
@@ -163,6 +170,7 @@ function reset(){
  fileInput.parentNode.replaceChild(ni,fileInput);
  ni.addEventListener("change",e=>load(e.target.files[0]));
  drop.textContent="Drop image here or click to choose";
+ frameToggle.checked=false;
 }
 
 function load(f){
