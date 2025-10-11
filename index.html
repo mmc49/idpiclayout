@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ID Photo 4×6 Layout • 35×45 mm</title>
+<title>ID Photo 4×6 Layout • 35×45 mm (Bordered-Calibrated)</title>
 <style>
 :root{
  --bg:#0b0c10;--panel:#14161b;--muted:#9095a0;--text:#e9edf1;
  --acc:#6ee7b7;--acc2:#8ab4f8;--border:#252a33;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;
- background:var(--bg);color:var(--text)}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
 .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
 header{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 header h1{font-size:20px;margin:0}
@@ -21,14 +20,12 @@ header h1{font-size:20px;margin:0}
 .controls{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:end}
 .field{display:flex;flex-direction:column;gap:6px;grid-column:span 6}
 label{font-size:12px;color:var(--muted)}
-button{appearance:none;border:1px solid var(--border);background:#0f1116;
- color:#e9edf1;border-radius:10px;padding:10px 12px;font-size:14px}
-button.primary{background:linear-gradient(135deg,var(--acc2),var(--acc));
- color:#0b0c10;border:none;font-weight:600}
+button{appearance:none;border:1px solid var(--border);background:#0f1116;color:#e9edf1;
+ border-radius:10px;padding:10px 12px;font-size:14px}
+button.primary{background:linear-gradient(135deg,var(--acc2),var(--acc));color:#0b0c10;border:none;font-weight:600}
 .row{display:flex;gap:10px;flex-wrap:wrap}
-.drop{border:2px dashed #2b323d;border-radius:12px;padding:18px;
- text-align:center;color:#cbd5e1;cursor:pointer;background:#0f1116;
- transition:border-color .2s}
+.drop{border:2px dashed #2b323d;border-radius:12px;padding:18px;text-align:center;color:#cbd5e1;
+ cursor:pointer;background:#0f1116;transition:border-color .2s}
 .drop.drag{border-color:var(--acc);background:#0e161f}
 .preview{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 canvas{width:100%;height:auto;background:white;border-radius:12px;border:1px solid var(--border)}
@@ -41,7 +38,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px;text-align:center}
 <div class="wrap">
 <header>
   <h1>ID Photo 4×6 Layout</h1>
-  <span class="badge">35×45 mm • 3×2 grid</span>
+  <span class="badge">35×45 mm • 3×2 grid • Bordered calibrated (+3%)</span>
   <span class="version" id="versionTag"></span>
 </header>
 
@@ -53,7 +50,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px;text-align:center}
         Drop image here or click to choose
         <input id="file" type="file" accept="image/*">
       </label>
-      <div class="note">Six 35×45 mm photos on a 4×6 in sheet at 600 dpi — exact size when Borderless = OFF.</div>
+      <div class="note">600 DPI • Bordered printing (Scale 100 %) → true 35×45 mm final size</div>
     </div>
   </div>
 
@@ -69,7 +66,7 @@ footer{margin:24px 0;color:#9aa3af;font-size:12px;text-align:center}
   </div>
 </section>
 
-<footer>Print Settings → Paper 4×6 in • Scale 100 % • Borderless OFF for exact 35×45 mm output.</footer>
+<footer>Print Settings → Paper 4×6 in • Borderless OFF • Scale 100 % (Actual Size)</footer>
 </div>
 
 <script>
@@ -91,9 +88,12 @@ const DPI=600;
 const mmToIn=mm=>mm/25.4,inToPx=mm=>Math.round(mmToIn(mm)*DPI);
 let loadedImg=null;
 
+// enlarge 3% to offset Selphy's bordered shrink
+const SCALE_FACTOR=1.03;
+
 function computeLayout(){
  const W=inToPx(152.4),H=inToPx(101.6); // 4×6 in
- const pw=inToPx(35),ph=inToPx(45);
+ const pw=inToPx(35*SCALE_FACTOR),ph=inToPx(45*SCALE_FACTOR);
  const cols=3,rows=2;
  const totalW=cols*pw,totalH=rows*ph;
  const gapX=(W-totalW)/(cols+1),gapY=(H-totalH)/(rows+1);
@@ -116,40 +116,15 @@ function drawImage(img,x,y,w,h){
  ctx.drawImage(img,dx,dy,dw,dh);
 }
 
-// ---- Full dashed grid (all photo edges) ----
 function drawDashedCuts(layout){
  const {positions,pw,ph,W,H,gapX,gapY}=layout;
  ctx.save();
- ctx.strokeStyle="#444";   // 60 % black
- ctx.lineWidth=2;
- ctx.setLineDash([10,6]);
-
- // Collect all vertical and horizontal edge coordinates
+ ctx.strokeStyle="#444";ctx.lineWidth=2;ctx.setLineDash([10,6]);
  const vSet=new Set(),hSet=new Set();
- for(const p of positions){
-   vSet.add(Math.round(p.x));
-   vSet.add(Math.round(p.x+pw));
-   hSet.add(Math.round(p.y));
-   hSet.add(Math.round(p.y+ph));
- }
- const V=Array.from(vSet).sort((a,b)=>a-b);
- const Hs=Array.from(hSet).sort((a,b)=>a-b);
-
- // Vertical lines (include leftmost & rightmost edges)
- for(const x of V){
-   ctx.beginPath();
-   ctx.moveTo(x,gapY/2);
-   ctx.lineTo(x,H-gapY/2);
-   ctx.stroke();
- }
-
- // Horizontal lines (include top & bottom edges)
- for(const y of Hs){
-   ctx.beginPath();
-   ctx.moveTo(gapX/2,y);
-   ctx.lineTo(W-gapX/2,y);
-   ctx.stroke();
- }
+ for(const p of positions){vSet.add(p.x);vSet.add(p.x+pw);hSet.add(p.y);hSet.add(p.y+ph);}
+ const V=[...vSet].sort((a,b)=>a-b),Hs=[...hSet].sort((a,b)=>a-b);
+ for(const x of V){ctx.beginPath();ctx.moveTo(x,gapY/2);ctx.lineTo(x,H-gapY/2);ctx.stroke();}
+ for(const y of Hs){ctx.beginPath();ctx.moveTo(gapX/2,y);ctx.lineTo(W-gapX/2,y);ctx.stroke();}
  ctx.restore();
 }
 
@@ -157,21 +132,26 @@ function render(){
  if(!loadedImg){alert("Please upload an image first.");return;}
  const layout=computeLayout();
  ctx.fillStyle="#fff";ctx.fillRect(0,0,layout.W,layout.H);
- for(const p of layout.positions)
-  drawImage(loadedImg,p.x,p.y,layout.pw,layout.ph);
+ for(const p of layout.positions)drawImage(loadedImg,p.x,p.y,layout.pw,layout.ph);
  drawDashedCuts(layout);
 }
 
 function downloadJPEG(){
  const a=document.createElement("a");
  a.href=canvas.toDataURL("image/jpeg",0.95);
- a.download="ID-4x6-layout.jpg";a.click();
+ a.download="ID-4x6-bordered-layout.jpg";a.click();
 }
 
 function openPrint(){
  const imgURL=canvas.toDataURL("image/png");
  const w=window.open("","_blank");
- const html=`<!DOCTYPE html><html><head><meta charset='utf-8'><style>@page{size:6in 4in;margin:0}body{margin:0;display:flex;justify-content:center;align-items:center;background:#fff}img{width:6in;height:4in;}</style></head><body><img src='${imgURL}'><script>window.onload=()=>{alert("Print with Scale 100 % and Borderless OFF for true size.");window.print()}<\\/script></body></html>`;
+ const html=`<!DOCTYPE html><html><head><meta charset='utf-8'>
+ <style>@page{size:6in 4in;margin:0}
+ body{margin:0;display:flex;justify-content:center;align-items:center;background:#fff}
+ img{width:6in;height:4in;}</style></head>
+ <body><img src='${imgURL}'><script>
+ window.onload=()=>{alert("Print with Borderless OFF and Scale 100 % for true 35×45 mm size.");window.print()}
+ <\\/script></body></html>`;
  w.document.write(html);w.document.close();
 }
 
@@ -188,8 +168,7 @@ function reset(){
 function load(f){
  if(!f.type.startsWith("image/"))return alert("Select an image");
  const url=URL.createObjectURL(f),img=new Image();
- img.onload=()=>{loadedImg=img;URL.revokeObjectURL(url);
- drop.textContent=f.name+" ✓";render();};
+ img.onload=()=>{loadedImg=img;URL.revokeObjectURL(url);drop.textContent=f.name+" ✓";render();};
  img.src=url;
 }
 
